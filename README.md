@@ -9,7 +9,9 @@ Run directly from GitHub without installation:
 ```bash
 # Troubleshoot Dnsmasq server
 curl -sSL https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/main/troubleshoot_dnsmasq_server.sh | sudo bash
+```
 
+```bash
 # Troubleshoot DNS client
 curl -sSL https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/main/troubleshoot_dnsmasq_client.sh | bash
 ```
