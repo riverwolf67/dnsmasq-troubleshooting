@@ -1,0 +1,135 @@
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Log files
+*.log
+logs/
+/tmp/
+dnsmasq_*.log
+dnsmasq_server_troubleshoot_*.log
+dnsmasq_client_troubleshoot_*.log
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Linux specific
+.directory
+.fuse_hidden*
+.nfs*
+
+# Test output
+test/
+tests/
+test-results/
+*.test
+*.out
+
+# Configuration files with sensitive data
+config.local
+*.local
+*.private
+*.secret
+.env
+.env.local
+.env.*.local
+
+# Cache directories
+cache/
+.cache/
+
+# Documentation build artifacts
+docs/_build/
+*.pdf
+
+# Package files
+*.tar
+*.tar.gz
+*.zip
+*.tgz
+*.rpm
+*.deb
+
+# Personal notes
+notes.txt
+TODO.txt
+todo.txt
+personal/
+private/
+
+# System files
+core
+*.core
+*.pid
+*.seed
+*.pid.lock
+
+# Debug files
+*.debug
+debug/
+*.trace
+
+# Compiled source
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Git specific
+*.patch
+*.diff
+
+# GitHub setup script (if it contains credentials)
+github_setup_local.sh
+
+# Ignore any local testing scripts
+test_*.sh
+local_*.sh
+*_local.sh
+
+# Python bytecode (if any Python helpers are added)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node modules (if any web interface is added later)
+node_modules/
+
+# Coverage reports
+coverage/
+*.coverage
+.coverage.*
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
