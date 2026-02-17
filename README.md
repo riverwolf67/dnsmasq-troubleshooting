@@ -103,11 +103,18 @@ Run the scripts directly without downloading:
 
 #### Server Script (requires sudo)
 ```bash
-# Using curl
+# Test all interfaces (using curl)
 curl -sSL https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/main/troubleshoot_dnsmasq_server.sh | sudo bash
+
+# Test specific interfaces
+curl -sSL https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/main/troubleshoot_dnsmasq_server.sh | sudo bash -s -- eth0 eth1
+
+# List available interfaces
+curl -sSL https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/main/troubleshoot_dnsmasq_server.sh | bash -s -- --list
 
 # Or using wget
 wget -qO- https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/main/troubleshoot_dnsmasq_server.sh | sudo bash
+wget -qO- https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/main/troubleshoot_dnsmasq_server.sh | sudo bash -s -- eth0
 ```
 
 #### Client Script
@@ -134,12 +141,30 @@ wget -qO- https://raw.githubusercontent.com/riverwolf67/dnsmasq-troubleshooting/
 Run on the Dnsmasq server machine:
 
 ```bash
-# Run with sudo for complete diagnostics
+# Run with sudo for complete diagnostics (tests all interfaces)
 sudo ./troubleshoot_dnsmasq_server.sh
+
+# Test specific network interfaces
+sudo ./troubleshoot_dnsmasq_server.sh eth0              # Test only eth0
+sudo ./troubleshoot_dnsmasq_server.sh eth0 eth1         # Test eth0 and eth1
+sudo ./troubleshoot_dnsmasq_server.sh bond0 vlan100     # Test bond0 and vlan100
+
+# List available network interfaces
+sudo ./troubleshoot_dnsmasq_server.sh --list
+
+# Show help and usage information
+./troubleshoot_dnsmasq_server.sh --help
 
 # Output will be displayed on screen and saved to log file
 # Log location: /tmp/dnsmasq_server_troubleshoot_YYYYMMDD_HHMMSS.log
 ```
+
+#### Interface Selection Features
+- **Automatic Detection**: By default, tests all non-loopback interfaces
+- **Specific Interface Testing**: Specify one or more interfaces to test only those
+- **Interface Validation**: Checks if specified interfaces exist before testing
+- **Performance Metrics**: Shows DNS response times per interface
+- **IPv4 Detection**: Automatically skips interfaces without IPv4 addresses
 
 ### Client Troubleshooting
 

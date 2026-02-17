@@ -1,9 +1,11 @@
 #!/bin/bash
 
 #############################################
-# DNSMasq Server Troubleshooting Script
+# Dnsmasq Server Troubleshooting Script
 # This script performs comprehensive checks on a dnsmasq server
-# Run with: sudo ./troubleshoot_dnsmasq_server.sh
+# Usage: sudo ./troubleshoot_dnsmasq_server.sh [interface1] [interface2] ...
+# Example: sudo ./troubleshoot_dnsmasq_server.sh eth0 eth1
+# If no interfaces specified, all non-loopback interfaces will be tested
 #############################################
 
 # Colors for output
@@ -15,6 +17,71 @@ NC='\033[0m' # No Color
 
 # Log file for detailed output
 LOG_FILE="/tmp/dnsmasq_server_troubleshoot_$(date +%Y%m%d_%H%M%S).log"
+
+# Function to display usage
+show_usage() {
+    echo "Usage: sudo $0 [OPTIONS] [interface1] [interface2] ..."
+    echo ""
+    echo "OPTIONS:"
+    echo "  -h, --help     Show this help message"
+    echo "  -a, --all      Test all interfaces (default if no interfaces specified)"
+    echo "  -l, --list     List available network interfaces and exit"
+    echo ""
+    echo "EXAMPLES:"
+    echo "  sudo $0                    # Test all interfaces"
+    echo "  sudo $0 eth0               # Test only eth0"
+    echo "  sudo $0 eth0 eth1          # Test eth0 and eth1"
+    echo "  sudo $0 --list             # Show available interfaces"
+    echo ""
+    echo "This script performs comprehensive Dnsmasq server diagnostics including:"
+    echo "  - Service status and configuration validation"
+    echo "  - Network interface and port checks"
+    echo "  - DNS resolution tests on specified interfaces"
+    echo "  - Performance metrics and log analysis"
+    exit 0
+}
+
+# Function to list interfaces
+list_interfaces() {
+    echo "Available network interfaces:"
+    echo "=============================="
+    ip -o link show | awk -F': ' '{print $2}' | while IFS= read -r interface; do
+        local ip
+        ip=$(ip -4 addr show "$interface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
+        if [[ -n "$ip" ]]; then
+            echo "  $interface: $ip"
+        else
+            echo "  $interface: (no IPv4 address)"
+        fi
+    done
+    exit 0
+}
+
+# Parse command line options
+INTERFACES_TO_TEST=()
+for arg in "$@"; do
+    case $arg in
+        -h|--help)
+            show_usage
+            ;;
+        -l|--list)
+            list_interfaces
+            ;;
+        -a|--all)
+            # Will test all interfaces (default behavior)
+            INTERFACES_TO_TEST=()
+            ;;
+        -*)
+            echo "Unknown option: $arg"
+            echo "Use -h or --help for usage information"
+            exit 1
+            ;;
+        *)
+            # Add interface to test list
+            INTERFACES_TO_TEST+=("$arg")
+            ;;
+    esac
+done
 
 # Function to print colored output
 print_status() {
@@ -57,6 +124,13 @@ gather_system_info() {
     print_status "INFO" "Kernel: $(uname -r)"
     print_status "INFO" "Date: $(date)"
     print_status "INFO" "Uptime: $(uptime -p)"
+
+    # Show interface configuration summary
+    if [[ ${#INTERFACES_TO_TEST[@]} -gt 0 ]]; then
+        print_status "INFO" "Testing specific interfaces: ${INTERFACES_TO_TEST[*]}"
+    else
+        print_status "INFO" "Testing all available network interfaces"
+    fi
 }
 
 # Check if dnsmasq is installed
@@ -229,22 +303,72 @@ test_dns_resolution() {
     print_status "INFO" "Testing local DNS resolution (127.0.0.1)..."
     if dig @127.0.0.1 google.com +short &> /dev/null; then
         print_status "OK" "Local DNS resolution working"
-        local result=$(dig @127.0.0.1 google.com +short | head -1)
+        local result
+        result=$(dig @127.0.0.1 google.com +short | head -1)
         print_status "INFO" "google.com resolves to: $result"
     else
         print_status "ERROR" "Local DNS resolution failed"
     fi
 
+    # Determine which interfaces to test
+    local interfaces_to_check=()
+
+    if [[ ${#INTERFACES_TO_TEST[@]} -gt 0 ]]; then
+        # Use user-specified interfaces
+        interfaces_to_check=("${INTERFACES_TO_TEST[@]}")
+        print_status "INFO" "Testing specified interfaces: ${interfaces_to_check[*]}"
+    else
+        # Use all non-loopback interfaces
+        while IFS= read -r interface; do
+            if [[ "$interface" != "lo" ]]; then
+                interfaces_to_check+=("$interface")
+            fi
+        done < <(ip -o link show | awk -F': ' '{print $2}')
+        print_status "INFO" "Testing all available interfaces (use -l to list or specify interfaces)"
+    fi
+
     # Test resolution on each interface
-    for interface in $(ip -o link show | awk -F': ' '{print $2}' | grep -v "lo"); do
-        local ip=$(ip -4 addr show $interface | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
+    for interface in "${interfaces_to_check[@]}"; do
+        # Check if interface exists
+        if ! ip link show "$interface" &> /dev/null; then
+            print_status "ERROR" "Interface $interface does not exist"
+            continue
+        fi
+
+        local ip
+        ip=$(ip -4 addr show "$interface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
+
         if [[ -n "$ip" ]]; then
             print_status "INFO" "Testing DNS on interface $interface ($ip)..."
-            if timeout 2 dig @$ip google.com +short &> /dev/null; then
+            if timeout 2 dig @"$ip" google.com +short &> /dev/null; then
                 print_status "OK" "DNS working on $interface"
+
+                # Show example resolution
+                local resolved
+                resolved=$(timeout 2 dig @"$ip" google.com +short | head -1)
+                if [[ -n "$resolved" ]]; then
+                    print_status "INFO" "  Resolution test: google.com → $resolved"
+                fi
+
+                # Test response time
+                local start_time end_time response_time
+                start_time=$(date +%s%N)
+                timeout 2 dig @"$ip" google.com +short &> /dev/null
+                end_time=$(date +%s%N)
+                response_time=$(( (end_time - start_time) / 1000000 ))
+
+                if [[ $response_time -lt 50 ]]; then
+                    print_status "OK" "  Response time: ${response_time}ms (Excellent)"
+                elif [[ $response_time -lt 200 ]]; then
+                    print_status "OK" "  Response time: ${response_time}ms (Good)"
+                else
+                    print_status "WARNING" "  Response time: ${response_time}ms (Slow)"
+                fi
             else
-                print_status "WARNING" "DNS not responding on $interface"
+                print_status "WARNING" "DNS not responding on $interface ($ip)"
             fi
+        else
+            print_status "INFO" "Interface $interface has no IPv4 address - skipping"
         fi
     done
 
@@ -363,9 +487,16 @@ generate_recommendations() {
 
 # Main execution
 main() {
-    echo "DNSMasq Server Troubleshooting Script"
+    echo "Dnsmasq Server Troubleshooting Script"
     echo "======================================"
     echo "Log file: $LOG_FILE"
+
+    # Show which interfaces will be tested
+    if [[ ${#INTERFACES_TO_TEST[@]} -gt 0 ]]; then
+        echo "Interfaces to test: ${INTERFACES_TO_TEST[*]}"
+    else
+        echo "Testing all available interfaces (use -l to list or specify interfaces)"
+    fi
     echo ""
 
     check_root
